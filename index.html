@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Make a Wish!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 min-h-screen flex flex-col items-center justify-center space-y-12">
+
+<h1 class="text-white text-4xl font-light tracking-widest uppercase">Make a wish</h1>
+
+<div class="relative flex flex-col items-center">
+
+    <div id="smoke" class="w-1 h-12 bg-gray-400/40 rounded-full blur-md opacity-0 absolute -top-12 transition-all duration-1000 pointer-events-none"></div>
+
+    <div id="flame" class="w-8 h-12 bg-gradient-to-t from-orange-600 via-orange-400 to-yellow-200
+    rounded-[50%_50%_20%_20%] blur-[1px] animate-pulse shadow-[0_0_50px_rgba(255,165,0,0.6)]
+    transition-all duration-1000 ease-out origin-bottom will-change-transform">
+    </div>
+
+    <div class="w-1 h-6 bg-gray-800 -mt-1 z-9"></div>
+
+    <div class="w-16 h-48 bg-orange-50 rounded-b-lg shadow-inner border-t-4 border-orange-100 relative">
+        <div class="absolute top-0 left-2 w-2 h-8 bg-white/30 rounded-full"></div>
+    </div>
+</div>
+
+<button id="startButton" class="px-8 py-3 bg-white/10 hover:bg-white/20 text-white border border-white/30 rounded-full transition-all duration-300 backdrop-blur-sm">
+    Click to Blow Me
+</button>
+
+<script>
+  const startButton = document.getElementById('startButton');
+  const flame = document.getElementById('flame');
+  const smoke = document.getElementById('smoke');
+
+  startButton.addEventListener('click', async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      startButton.innerText = "Ready... BLOW!";
+      startButton.disabled = true;
+
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyzer = audioContext.createAnalyser();
+
+      source.connect(analyzer);
+
+      analyzer.fftSize = 256;
+      const bufferLength = analyzer.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      function checkVolume() {
+        analyzer.getByteFrequencyData(dataArray);
+
+        let total = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          total += dataArray[i];
+        }
+        let average = total / bufferLength;
+
+        if (average > 55) {
+          extinguishCandle();
+          return;
+        }
+
+        requestAnimationFrame(checkVolume);
+      }
+
+      function extinguishCandle() {
+        flame.style.animation = 'none';
+        flame.classList.remove('animate-pulse');
+
+        setTimeout(() => {
+          flame.classList.add('opacity-0', 'scale-y-0', '-translate-y-12', 'blur-2xl');
+        }, 10);
+
+
+        smoke.classList.remove('opacity-0');
+        setTimeout(() => {
+          smoke.classList.add('-translate-y-24', 'opacity-0', 'scale-x-150');
+        }, 50);
+
+        startButton.innerText = "Wish Granted! ✨";
+        startButton.classList.replace('bg-white/10', 'bg-green-500/20');
+
+        stream.getTracks().forEach(track => track.stop());
+      }
+
+      checkVolume();
+
+    } catch (err) {
+      console.error("Mic access denied or error:", err);
+      startButton.innerText = "Mic Access Required";
+    }
+  });
+</script>
+</body>
+</html>
