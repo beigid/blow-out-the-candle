@@ -36,13 +36,17 @@
   const smoke = document.getElementById('smoke');
 
   startButton.addEventListener('click', async () => {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
       startButton.innerText = "Ready... BLOW!";
       startButton.disabled = true;
 
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const source = audioContext.createMediaStreamSource(stream);
       const analyzer = audioContext.createAnalyser();
 
@@ -55,13 +59,17 @@
       function checkVolume() {
         analyzer.getByteFrequencyData(dataArray);
 
-        let total = 0;
+        let maxVolume = 0;
         for (let i = 0; i < bufferLength; i++) {
-          total += dataArray[i];
+          if (dataArray[i] > maxVolume) {
+            maxVolume = dataArray[i];
+          }
         }
-        let average = total / bufferLength;
 
-        if (average > 55) {
+
+        const threshold = 210;
+
+        if (maxVolume > threshold) {
           extinguishCandle();
           return;
         }
@@ -76,7 +84,6 @@
         setTimeout(() => {
           flame.classList.add('opacity-0', 'scale-y-0', '-translate-y-12', 'blur-2xl');
         }, 10);
-
 
         smoke.classList.remove('opacity-0');
         setTimeout(() => {
